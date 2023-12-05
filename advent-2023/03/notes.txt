@@ -1,0 +1,15 @@
+Decided to operate on lines of strings (`string[]`) since strings behave like arrays in JS. 
+
+It could make sense to add line of dots above, below left and right of input to always get `.` and not
+have to coalesce `.` and undefined when going out of bounds, but I did every access in one function `getXY...` 
+and handled the borders there.
+
+
+type PartNumber = {
+  part: string;
+  line: number;
+  start: number;
+  end: number;
+};
+
+`String.matchAll` was big help in finding ranges of numbers to check.

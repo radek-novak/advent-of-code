@@ -1,0 +1,3 @@
+Lesson in not doing too much at the same time. 
+
+Surprised how good CoPilot was here at generating test assertions. It could see what I was doing from previous tests and _parse_ data to create new test.
