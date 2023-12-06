@@ -116,20 +116,20 @@ async function main2() {
   // console.log(newRangeMap);
   // console.log(seedRanges);
 
-  for (const seedRange of seedRanges) {
-    const newSeedRange = seedRange;
-    for (const map of newRangeMap) {
-      for (const range of map.ranges) {
-        const overlap = getRangeOverlaps(newSeedRange, range.source);
+  // for (const seedRange of seedRanges) {
+  //   const newSeedRange = seedRange;
+  //   for (const map of newRangeMap) {
+  //     for (const range of map.ranges) {
+  //       const overlap = getRangeOverlaps(newSeedRange, range.source);
 
-        if (overlap.overlap) {
-          console.log(overlap);
-          newSeedRange[0] = overlap.overlap[1] + 1;
-        }
-      }
-    }
-    console.log(newSeedRange);
-  }
+  //       if (overlap.overlap) {
+  //         console.log(overlap);
+  //         newSeedRange[0] = overlap.overlap[1] + 1;
+  //       }
+  //     }
+  //   }
+  //   console.log(newSeedRange);
+  // }
 }
 // main();
 
@@ -209,14 +209,9 @@ function sourceToDestination(maps: RangeMap[], source: number, current = 0) {
   return sourceToDestination(maps, newDestination, current + 1);
 }
 
+// inclusive; first and last element of the range, [1,3] is length 3, [1,1] length 1
 type Range = [number, number];
-function getRangeOverlaps(
-  source: Range,
-  target: Range
-): {
-  overlap?: Range;
-  rest: Range[];
-} {
+function getRangeOverlaps(source: Range, target: Range): Range | null {
   //             .....[....]....
   // left cross  ...[...].......
   // right cross ........[...]..
@@ -228,108 +223,40 @@ function getRangeOverlaps(
   const [sourceStart, sourceEnd] = source;
   const [targetStart, targetEnd] = target;
 
-  if (sourceStart === targetStart && sourceEnd === targetEnd) {
-    return {
-      overlap: [sourceStart, sourceEnd],
-      rest: [],
-    };
-  }
-
-  if (sourceStart === targetStart) {
-    if (sourceEnd === targetEnd) {
-      return {
-        overlap: [sourceStart, sourceEnd],
-        rest: [],
-      };
-    }
-
-    if (sourceEnd < targetEnd) {
-      return {
-        overlap: [sourceStart, sourceEnd],
-        rest: [],
-      };
-    }
-
-    if (sourceEnd > targetEnd) {
-      return {
-        overlap: [sourceStart, targetEnd],
-        rest: [[targetEnd + 1, sourceEnd]],
-      };
-    }
-  }
-
-  if (sourceStart === targetEnd) {
-    return {
-      overlap: [sourceStart, targetEnd],
-      rest: [[targetEnd + 1, sourceEnd]],
-    };
+  // no overlap
+  if (sourceEnd < targetStart || sourceStart > targetEnd) {
+    return null;
   }
 
   if (sourceStart < targetStart) {
-    // wrap around
-    if (sourceEnd > targetEnd) {
-      return {
-        overlap: [targetStart, targetEnd],
-        rest: [
-          [sourceStart, targetStart],
-          [targetEnd, sourceEnd],
-        ],
-      };
-    }
-    // left cross
-    if (sourceEnd < targetEnd) {
-      return {
-        overlap: [targetStart, sourceEnd],
-        rest: [[sourceStart, targetStart]],
-      };
-    }
-  } else if (sourceStart > targetStart && sourceStart < targetEnd) {
-    // right cross
-    if (sourceEnd > targetEnd) {
-      return {
-        overlap: [sourceStart, targetEnd],
-        rest: [[targetEnd, sourceEnd]],
-      };
-    }
-    // inner
-    if (sourceEnd < targetEnd) {
-      return {
-        overlap: [sourceStart, sourceEnd],
-        rest: [],
-      };
-    }
-  } else if (sourceStart > targetEnd || sourceEnd < targetStart) {
-    return {
-      rest: [[...source]],
-    };
+    return [targetStart, Math.min(sourceEnd, targetEnd)];
+  } else {
+    // sourceStart >= targetStart
+    return [sourceStart, Math.min(sourceEnd, targetEnd)];
   }
-
-  throw new Error(
-    `missing case: source ${source.join("-")} target ${target.join("-")}`
-  );
 }
 
-function mapRanges(ranges: Range[], rangeMap: RangeMapNew) {
-  const newRanges = [] as Range[];
-  const oldRanges = [...ranges];
+// function mapRanges(ranges: Range[], rangeMap: RangeMapNew) {
+//   const newRanges = [] as Range[];
+//   const oldRanges = [...ranges];
 
-  do {
-    const oldRange = oldRanges.shift();
-    if (!oldRange) break;
+//   do {
+//     const oldRange = oldRanges.shift();
+//     if (!oldRange) break;
 
-    for (const range of rangeMap.ranges) {
-      const overlaps = getRangeOverlaps(oldRange, range.source);
-      if (overlaps.overlap) {
-        const diff = range.destination[0] - range.source[0];
-        newRanges.push(mapRange(overlaps.overlap, diff));
-      }
+//     for (const range of rangeMap.ranges) {
+//       const overlaps = getRangeOverlaps(oldRange, range.source);
+//       if (overlaps.overlap) {
+//         const diff = range.destination[0] - range.source[0];
+//         newRanges.push(mapRange(overlaps.overlap, diff));
+//       }
 
-      oldRanges.push(...overlaps.rest);
-    }
-  } while (oldRanges.length);
+//       oldRanges.push(...overlaps.rest);
+//     }
+//   } while (oldRanges.length);
 
-  return newRanges;
-}
+//   return newRanges;
+// }
 
 function mapRange([a, b]: Range, diff: number) {
   return [a + diff, b + diff] as Range;
@@ -375,32 +302,14 @@ Deno.test("getRangeOverlaps", () => {
   // no overlap  .[..]..........
   const target = [5, 11] as Range;
 
-  assertObjectMatch(getRangeOverlaps([5, 12], target), {
-    overlap: [5, 11],
-    rest: [[11, 12]],
-  });
-  assertObjectMatch(getRangeOverlaps([6, 12], target), {
-    overlap: [6, 11],
-    rest: [[11, 12]],
-  });
-  assertObjectMatch(getRangeOverlaps([6, 8], target), {
-    overlap: [6, 8],
-    rest: [
-      [5, 5],
-      [8, 11],
-    ],
-  });
-  assertObjectMatch(getRangeOverlaps([2, 4], target), {
-    rest: [[2, 4]],
-  });
-  assertObjectMatch(getRangeOverlaps([12, 14], target), {
-    rest: [[12, 14]],
-  });
-
-  assertObjectMatch(getRangeOverlaps([3, 8], target), {
-    overlap: [5, 8],
-    rest: [[3, 5]],
-  });
+  assertArrayIncludes(getRangeOverlaps([11, 14], target)!, [11, 11]);
+  assertArrayIncludes(getRangeOverlaps([11, 11], target)!, [11, 11]);
+  assertArrayIncludes(getRangeOverlaps([5, 12], target)!, [5, 11]);
+  assertArrayIncludes(getRangeOverlaps([6, 12], target)!, [6, 11]);
+  assertArrayIncludes(getRangeOverlaps([6, 8], target)!, [6, 8]);
+  assertEquals(getRangeOverlaps([2, 4], target)!, null);
+  assertEquals(getRangeOverlaps([12, 14], target), null);
+  assertArrayIncludes(getRangeOverlaps([3, 8], target)!, [5, 8]);
 });
 // Deno.test("mapRanges", () => {
 //   const rangeMap: RangeMapNew = {
