@@ -236,27 +236,26 @@ function getRangeOverlaps(source: Range, target: Range): Range | null {
   }
 }
 
-// function mapRanges(ranges: Range[], rangeMap: RangeMapNew) {
-//   const newRanges = [] as Range[];
-//   const oldRanges = [...ranges];
+function mapRanges(ranges: Range[], rangeMap: RangeMapNew) {
+  const newRanges = [] as Range[];
 
-//   do {
-//     const oldRange = oldRanges.shift();
-//     if (!oldRange) break;
+  // do {
+  //   const oldRange = oldRanges.shift();
+  //   if (!oldRange) break;
 
-//     for (const range of rangeMap.ranges) {
-//       const overlaps = getRangeOverlaps(oldRange, range.source);
-//       if (overlaps.overlap) {
-//         const diff = range.destination[0] - range.source[0];
-//         newRanges.push(mapRange(overlaps.overlap, diff));
-//       }
+  //   for (const range of rangeMap.ranges) {
+  //     const overlaps = getRangeOverlaps(oldRange, range.source);
+  //     if (overlaps.overlap) {
+  //       const diff = range.destination[0] - range.source[0];
+  //       newRanges.push(mapRange(overlaps.overlap, diff));
+  //     }
 
-//       oldRanges.push(...overlaps.rest);
-//     }
-//   } while (oldRanges.length);
+  //     oldRanges.push(...overlaps.rest);
+  //   }
+  // } while (oldRanges.length);
 
-//   return newRanges;
-// }
+  return newRanges;
+}
 
 function mapRange([a, b]: Range, diff: number) {
   return [a + diff, b + diff] as Range;
