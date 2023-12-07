@@ -1,8 +1,5 @@
 import { assertArrayIncludes } from "https://deno.land/std@0.208.0/assert/mod.ts";
-import {
-  assertObjectMatch,
-  assertEquals,
-} from "https://deno.land/std@0.208.0/assert/mod.ts";
+import { assertEquals } from "https://deno.land/std@0.208.0/assert/mod.ts";
 
 type RangeMap = {
   sourceName: string;
@@ -85,17 +82,35 @@ async function main() {
   console.log(seedLocations, lowestLocation);
 }
 async function main2() {
-  // const file = await Deno.readTextFile("input.txt");
+  const file = await Deno.readTextFile("input.txt");
 
-  const { seeds, maps } = parseInput(example);
+  // const { seeds, maps } = parseInput(example);
+  const { seeds, maps } = parseInput(file);
   const seedRanges = [] as Range[];
-  const newRangeMap = [] as RangeMapNew[];
 
   for (let i = 0; i < seeds.length; i += 2) {
     const start = seeds[i];
     const range = seeds[i + 1];
     seedRanges.push([start, start + range - 1]);
   }
+
+  const newRangeMap = makeNewRangeMap(maps);
+
+  fixRanges(newRangeMap);
+
+  const locationsPerSeed = seedRanges.map((seedRange) =>
+    followRange(newRangeMap, [seedRange])
+  );
+  console.log(Math.min(...locationsPerSeed.flat(2)));
+
+  // console.log(seedRanges);
+  // console.log(
+  //   newRangeMap.map((m) => m.ranges.map((r) => [r.source, r.destination]))
+  // );
+}
+
+function makeNewRangeMap(maps: RangeMap[]) {
+  const newRangeMap = [] as RangeMapNew[];
 
   for (const map of maps) {
     const newMap: RangeMapNew = {
@@ -111,34 +126,71 @@ async function main2() {
       };
       newMap.ranges.push(newRange as any);
     }
+    newMap.ranges.sort((a, b) => a.source[0] - b.source[0]);
+
     newRangeMap.push(newMap);
   }
-  // console.log(newRangeMap);
-  // console.log(seedRanges);
 
-  // for (const seedRange of seedRanges) {
-  //   const newSeedRange = seedRange;
-  //   for (const map of newRangeMap) {
-  //     for (const range of map.ranges) {
-  //       const overlap = getRangeOverlaps(newSeedRange, range.source);
-
-  //       if (overlap.overlap) {
-  //         console.log(overlap);
-  //         newSeedRange[0] = overlap.overlap[1] + 1;
-  //       }
-  //     }
-  //   }
-  //   console.log(newSeedRange);
-  // }
+  return newRangeMap;
 }
-// main();
+
+function fixRanges(newRangeMap: RangeMapNew[]) {
+  // fills in
+  for (const rangeMap of newRangeMap) {
+    const ranges = rangeMap.ranges;
+
+    // ensure start at 0
+    if (ranges[0].source[0] != 0) {
+      const newRange = [0, ranges[0].source[0] - 1] as Range;
+      const newRangeMap = {
+        source: newRange,
+        destination: [...newRange] as Range,
+      };
+
+      ranges.unshift(newRangeMap);
+    }
+
+    for (let i = 1; i < ranges.length; i++) {
+      if (ranges[i].source[0] - 1 != ranges[i - 1].source[1]) {
+        // insert a missing range
+        const newRange = [
+          ranges[i - 1].source[1] + 1,
+          ranges[i].source[0] - 1,
+        ] as Range;
+        const newRangeMap = {
+          source: newRange,
+          destination: [...newRange] as Range,
+        };
+
+        ranges.splice(i, 0, newRangeMap);
+      }
+    }
+
+    // add trailing range to infinity
+    ranges.push({
+      source: [ranges[ranges.length - 1].source[1] + 1, Infinity],
+      destination: [ranges[ranges.length - 1].source[1] + 1, Infinity],
+    });
+  }
+}
+
+function followRange(newRangeMap: RangeMapNew[], ranges: Range[], i = 0) {
+  // console.log(i, ranges);
+  const rangeMap = newRangeMap[i];
+
+  if (!rangeMap) return ranges;
+
+  const newRanges = mapRanges(ranges, rangeMap);
+
+  return followRange(newRangeMap, newRanges, i + 1);
+}
 
 const createRangeMap = (): RangeMap => ({
   sourceName: "",
   destinationName: "",
   ranges: [],
 });
-// main2();
+main2();
 function parseInput(file: string) {
   const lines = file.trim().split("\n");
 
@@ -239,20 +291,36 @@ function getRangeOverlaps(source: Range, target: Range): Range | null {
 function mapRanges(ranges: Range[], rangeMap: RangeMapNew) {
   const newRanges = [] as Range[];
 
-  // do {
-  //   const oldRange = oldRanges.shift();
-  //   if (!oldRange) break;
+  for (const range of ranges) {
+    newRanges.push(...mapOneRange(range, rangeMap.ranges));
+  }
 
-  //   for (const range of rangeMap.ranges) {
-  //     const overlaps = getRangeOverlaps(oldRange, range.source);
-  //     if (overlaps.overlap) {
-  //       const diff = range.destination[0] - range.source[0];
-  //       newRanges.push(mapRange(overlaps.overlap, diff));
-  //     }
+  return newRanges;
+}
 
-  //     oldRanges.push(...overlaps.rest);
-  //   }
-  // } while (oldRanges.length);
+function mapOneRange(range: Range, rangeMaps: RangeMapNew["ranges"]) {
+  const newRanges = [] as Range[];
+
+  let [rangeStart, rangeEnd] = range;
+
+  for (let i = 0; i < rangeMaps.length; i++) {
+    const {
+      source: [sourceStart, sourceEnd],
+      destination,
+    } = rangeMaps[i];
+
+    if (rangeStart <= sourceEnd) {
+      const diff = destination[0] - sourceStart;
+      const newRangeEnd = Math.min(rangeEnd, sourceEnd);
+      const newRange = mapRange([rangeStart, newRangeEnd], diff);
+      newRanges.push(newRange);
+      rangeStart = newRangeEnd + 1;
+
+      if (rangeEnd - rangeStart < 0) {
+        break;
+      }
+    }
+  }
 
   return newRanges;
 }
@@ -264,6 +332,33 @@ function mapRange([a, b]: Range, diff: number) {
 //
 // Tests
 //
+
+// Deno.test("subtractRange", () => {
+//   assertArrayIncludes(subtractRange([1, 10], [5, 10]), [1, 4]);
+//   assertArrayIncludes(subtractRange([3, 10], [1, 6]), [7, 10]);
+//   assertArrayIncludes(subtractRange([1, 3], [2, 3]), [1, 1]);
+//   assertArrayIncludes(subtractRange([52, 54], [54, 56]), [52, 53]);
+// });
+
+// Deno.test("fillRanges", () => {
+//   const ranges: RangeMapNew["ranges"] = [
+//     { source: [50, 97], destination: [52, 99] },
+//     { source: [98, 99], destination: [50, 51] },
+//   ];
+// });
+Deno.test("mapOneRange", () => {
+  const { maps } = parseInput(example);
+  const newRangeMap = makeNewRangeMap(maps);
+
+  console.log(mapOneRange([52, 54], newRangeMap[0].ranges));
+  assertArrayIncludes(mapOneRange([52, 54], newRangeMap[0].ranges), [[54, 56]]);
+  assertArrayIncludes(mapOneRange([98, 99], newRangeMap[0].ranges), [[50, 51]]);
+  // assertArrayIncludes(mapOneRange([98, 101], ranges), [
+  //   [50, 51],
+  //   [100, 101],
+  // ]);
+});
+
 Deno.test("getDestination", () => {
   const rangeMap = createRangeMap();
 
