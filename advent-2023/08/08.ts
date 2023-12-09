@@ -62,10 +62,10 @@ async function main2() {
 
   const nodeMap = buildTree(nodes);
 
-  let currentNodes = findStartNodes(nodes);
+  let currentNodes = findStartNodes(nodes).slice(0, 1);
   let i = 0;
   while (!checkEndNodes(currentNodes)) {
-    // console.log(i, currentNodes);
+    console.log(i, currentNodes);
     const currentInstruction = instructions[i % instructions.length] as
       | "L"
       | "R";
