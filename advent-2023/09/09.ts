@@ -1,9 +1,3 @@
-import {
-  assertArrayIncludes,
-  assertObjectMatch,
-  assertEquals,
-} from "https://deno.land/std@0.208.0/assert/mod.ts";
-
 const example = `
 0 3 6 9 12 15
 1 3 6 10 15 21
@@ -15,18 +9,19 @@ async function main() {
   const parsed = parseFile(file);
   // const parsed = parseFile(example);
 
-  // console.log(parsed);
-  // console.log(buildSequences(parsed[0]));
-  // console.log(getNextInSequences(buildSequences(parsed[2])));
-
   const newNumbers = [] as number[];
+  const newNumbersB = [] as number[];
   for (const line of parsed) {
     const sequences = buildSequences(line);
 
     newNumbers.push(getNextInSequences(sequences));
+    newNumbersB.push(getNextInSequencesFront(sequences));
   }
 
+  // first part solution
   console.log(newNumbers.reduce((a, b) => a + b, 0));
+  // second part solution
+  console.log(newNumbersB.reduce((a, b) => a + b, 0));
 }
 
 function parseFile(input: string) {
@@ -64,17 +59,13 @@ function getNextInSequences(sequences: number[][]) {
   return sequences[0].at(-1)!;
 }
 
-main();
+function getNextInSequencesFront(sequences: number[][]) {
+  for (let i = sequences.length - 1; i >= 0; i--) {
+    const prevSequenceValue = sequences[i + 1]?.[0] ?? 0;
 
-//
-// Tests
-//
-Deno.test("simpl", () => {
-  // assertEquals(  );
-});
-Deno.test("obj", () => {
-  // assertObjectMatch(  );
-});
-Deno.test("arr", () => {
-  // assertArrayIncludes
-});
+    sequences[i].unshift(sequences[i][0] - prevSequenceValue);
+  }
+  return sequences[0][0];
+}
+
+main();
