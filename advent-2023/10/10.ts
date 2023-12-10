@@ -205,6 +205,29 @@ class Adjacency {
     );
   }
 
+  printBorder() {
+    for (let i = 0; i < this.h; i++) {
+      const line = this.graph[i];
+
+      let sLine = "";
+
+      for (let j = 0; j < this.w; j++) {
+        const char = line[j];
+
+        if (this.distances[i][j] === Infinity) {
+          sLine += ".";
+        } else {
+          sLine += char
+            .replace("F", "┌")
+            .replace("L", "└")
+            .replace("J", "┘")
+            .replace("7", "┐");
+        }
+      }
+      console.log(sLine);
+    }
+  }
+
   // print() {}
 }
 
@@ -218,7 +241,7 @@ async function main() {
 
   adj.walk();
 
-  // adj.printDistances();
+  adj.printBorder();
 
   console.log(adj.getMaxDistance());
 }
