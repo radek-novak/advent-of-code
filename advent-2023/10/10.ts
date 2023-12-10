@@ -117,7 +117,23 @@ class Adjacency {
     );
   }
 
-  walk(
+  walk() {
+    const stack = [[this.start, 0]] as Parameters<Adjacency["step"]>[];
+
+    while (stack.length) {
+      const nextStep = stack.pop();
+
+      if (!nextStep) throw new Error("no next step");
+
+      const nextSteps = this.step(...nextStep);
+
+      if (!nextSteps) continue;
+
+      stack.push(...nextSteps);
+    }
+  }
+
+  step(
     start: [number, number],
     distance: number,
     from?: "L" | "R" | "U" | "D"
@@ -144,40 +160,42 @@ class Adjacency {
 
     this.distances[y][x] = distance;
 
-    try {
-      if (
-        (pipe === "S" || pipe === "-" || pipe === "J" || pipe === "7") &&
-        x > 0
-      ) {
-        // Left
-        this.walk([x - 1, y], distance + 1, "R");
-      }
-      if (
-        (pipe === "S" || pipe === "-" || pipe === "L" || pipe === "F") &&
-        x < this.w - 1
-      ) {
-        // Right
-        this.walk([x + 1, y], distance + 1, "L");
-      }
-      if (
-        (pipe === "S" || pipe === "|" || pipe === "L" || pipe === "J") &&
-        y > 0
-      ) {
-        // Up
-        this.walk([x, y - 1], distance + 1, "D");
-      }
-      if (
-        (pipe === "S" || pipe === "|" || pipe === "7" || pipe === "F") &&
-        y < this.h - 1
-      ) {
-        // Down
-        this.walk([x, y + 1], distance + 1, "U");
-      }
-    } catch (e) {
-      console.log(e);
+    const nextSteps = [] as [
+      start: [number, number],
+      distance: number,
+      from?: "L" | "R" | "U" | "D" | undefined
+    ][];
 
-      this.printDistances();
+    if (
+      (pipe === "S" || pipe === "-" || pipe === "J" || pipe === "7") &&
+      x > 0
+    ) {
+      // Left
+      nextSteps.push([[x - 1, y], distance + 1, "R"]);
     }
+    if (
+      (pipe === "S" || pipe === "-" || pipe === "L" || pipe === "F") &&
+      x < this.w - 1
+    ) {
+      // Right
+      nextSteps.push([[x + 1, y], distance + 1, "L"]);
+    }
+    if (
+      (pipe === "S" || pipe === "|" || pipe === "L" || pipe === "J") &&
+      y > 0
+    ) {
+      // Up
+      nextSteps.push([[x, y - 1], distance + 1, "D"]);
+    }
+    if (
+      (pipe === "S" || pipe === "|" || pipe === "7" || pipe === "F") &&
+      y < this.h - 1
+    ) {
+      // Down
+      nextSteps.push([[x, y + 1], distance + 1, "U"]);
+    }
+
+    return nextSteps;
   }
 
   getMaxDistance() {
@@ -194,13 +212,13 @@ async function main() {
   const file = await Deno.readTextFile("input.txt");
 
   const parsed = parseFile(file);
-  // const parsed = parseFile(example2);
+  // const parsed = parseFile(example4);
 
   const adj = parsed.adjacency;
 
-  adj.walk(adj.start, 0);
+  adj.walk();
 
-  adj.printDistances();
+  // adj.printDistances();
 
   console.log(adj.getMaxDistance());
 }
