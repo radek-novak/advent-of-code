@@ -1,6 +1,5 @@
 import {
   assertArrayIncludes,
-  assertObjectMatch,
   assertEquals,
 } from "https://deno.land/std@0.208.0/assert/mod.ts";
 
@@ -21,20 +20,28 @@ async function main() {
 
   const parsed = parseFile(file);
   // const parsed = parseFile(example);
-  const expanded = expandEmpty(parsed);
+  // const expanded = expandEmpty(parsed);
 
-  console.log(expanded.join("\n"));
+  console.log(parsed.join("\n"));
 
-  const galaxies = getAllGalaxies(expanded);
+  const galaxies = getAllGalaxies(parsed);
+
+  const adjustedGalaxies = adjustGalaxiesForExpansion(
+    galaxies,
+    findColumnsToExpand(parsed),
+    findEmptyRows(parsed),
+    1_000_000
+  );
 
   console.log("galaxies", galaxies.length);
   console.log("combinations", getCombinations(galaxies, galaxies).length);
 
-  const distances = getCombinations<[number, number]>(galaxies, galaxies).map(
-    ([a, b]) => {
-      return shortestPath(a, b);
-    }
-  );
+  const distances = getCombinations<[number, number]>(
+    adjustedGalaxies,
+    adjustedGalaxies
+  ).map(([a, b]) => {
+    return shortestPath(a, b);
+  });
   console.log(distances.reduce((a, b) => a + b, 0));
 }
 
@@ -42,6 +49,32 @@ function parseFile(input: string) {
   const lines = input.trim().split("\n");
 
   return lines;
+}
+
+function adjustGalaxiesForExpansion(
+  galaxies: [number, number][],
+  columnsToExpand: number[],
+  rowsToExpand: number[],
+  expansion = 1_000_000
+) {
+  return galaxies.map(([x, y]) => {
+    let newX = x;
+    let newY = y;
+
+    for (let i = 0; i < columnsToExpand.length; i++) {
+      if (x > columnsToExpand[i]) {
+        newX += expansion - 1;
+      }
+    }
+
+    for (let i = 0; i < rowsToExpand.length; i++) {
+      if (y > rowsToExpand[i]) {
+        newY += expansion - 1;
+      }
+    }
+
+    return [newX, newY] as [number, number];
+  });
 }
 
 function getCombinations<T>(a: T[], b: T[]): [T, T][] {
@@ -73,8 +106,7 @@ function getAllGalaxies(input: string[]) {
 
   return galaxies;
 }
-
-function expandEmptyColumns(input: string[]) {
+function findColumnsToExpand(input: string[]) {
   const columnsToExpand = [] as number[];
 
   for (let col = 0; col < input[0].length; col++) {
@@ -91,6 +123,11 @@ function expandEmptyColumns(input: string[]) {
       columnsToExpand.push(col);
     }
   }
+  return columnsToExpand;
+}
+function expandEmptyColumns(input: string[]) {
+  const columnsToExpand = findColumnsToExpand(input);
+
   let expanded = [...input];
 
   for (let i = 0; i < columnsToExpand.length; i++) {
@@ -104,7 +141,8 @@ function expandEmptyColumns(input: string[]) {
 
   return expanded;
 }
-function expandEmptyRows(input: string[]) {
+
+function findEmptyRows(input: string[]) {
   const rowsToExpand = [] as number[];
 
   for (let row = 0; row < input.length; row++) {
@@ -113,6 +151,13 @@ function expandEmptyRows(input: string[]) {
     }
     rowsToExpand.push(row);
   }
+
+  return rowsToExpand;
+}
+
+function expandEmptyRows(input: string[]) {
+  const rowsToExpand = findEmptyRows(input);
+
   const expanded = [...input];
 
   for (let i = 0; i < rowsToExpand.length; i++) {
@@ -134,9 +179,6 @@ main();
 //
 // Tests
 //
-// Deno.test("simpl", () => {
-//   // assertEquals(  );
-// });
 Deno.test("shortestPath", () => {
   assertEquals(shortestPath([1, 6], [5, 11]), 9);
 });
