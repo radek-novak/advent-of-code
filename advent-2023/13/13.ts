@@ -59,21 +59,30 @@ function parseFile(input: string) {
   return blocks;
 }
 
+// for first part: 0, second part: 1
+const START_BUDGET = 1;
+
 // index of the bottom reflective line
 function blockHorizontalReflection(block: string[]): number {
   for (let i = 1; i < block.length; i++) {
+    let budget = START_BUDGET;
     for (let a = i - 1, b = i; ; a--, b++) {
       if (a < 0 || b >= block.length) {
-        return i;
+        if (budget === 0) return i;
+        break;
       }
 
       const lineA = block[a];
       const lineB = block[b];
 
-      if (lineA !== lineB) {
+      const diffCount = stringDiffCount(lineA, lineB);
+      budget -= diffCount;
+      if (budget < 0) {
         break;
       }
     }
+
+    budget = 1;
   }
 
   return -1;
@@ -110,11 +119,28 @@ function transposeMatrix(matrix: string[]): string[] {
   return newMatrix;
 }
 
+function stringDiffCount(a: string, b: string) {
+  let diff = 0;
+
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] !== b[i]) {
+      diff++;
+    }
+  }
+
+  return diff;
+}
+
 main();
 
 //
 // Tests
 //
+Deno.test("compareStringsWithOneDiff", () => {
+  assertEquals(stringDiffCount("..##...#.", "..##..##."), 1);
+  assertEquals(stringDiffCount("#.##..##.", "..##..##."), 1);
+  assertEquals(stringDiffCount("#.##..##.", "...#..##."), 2);
+});
 Deno.test("blockHorizontalReflection", () => {
   const parsed = parseFile(example);
 
