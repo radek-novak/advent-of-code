@@ -30,6 +30,8 @@ async function main() {
 
   const parsed = parseFile(file);
   // const parsed = parseFile(example);
+  // const parsed = parseFile(file).map(fiveTimeRow);
+  // const parsed = parseFile(example).map(fiveTimeRow);
 
   let sum = 0;
   for (const row of parsed) {
@@ -39,7 +41,7 @@ async function main() {
     for (const combo of generateCombinations(missing.length, combinations)) {
       const newSprings = applyCombination(row.springs, combo);
       if (validateRow({ springs: newSprings, counts: row.counts })) {
-        console.log(newSprings);
+        // console.log(newSprings);
 
         sum++;
       }
@@ -135,6 +137,13 @@ function applyCombination(springs: string, combination: number[]): string {
   }
 
   return result;
+}
+
+function fiveTimeRow(row: Row) {
+  return {
+    springs: row.springs.repeat(5),
+    counts: Array.from({ length: 5 }).flatMap(() => row.counts),
+  };
 }
 
 main();
