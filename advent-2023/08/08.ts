@@ -79,6 +79,76 @@ async function main2() {
 
   console.log(i, currentNodes);
 }
+async function mainCycles() {
+  const file = await Deno.readTextFile("input.txt");
+
+  const { instructions, nodes } = parseFile(file);
+
+  const nodeMap = buildTree(nodes);
+
+  const currentNodes = findStartNodes(nodes);
+
+  const firstZ = [] as number[];
+  for (const currentNode of currentNodes) {
+    const { seen, pos } = findCycle(currentNode, nodeMap, instructions);
+    firstZ.push(pos[0]);
+    console.log(currentNode, seen.length, pos);
+    // Deno.writeFileSync(
+    //   `${currentNode}.txt`,
+    //   new TextEncoder().encode(seen.join("\n"))
+    // );
+  }
+
+  console.log(firstZ.map((n) => n / 2));
+  const product = firstZ
+    .map((n) => n / 2)
+    .reduce((a, b) => BigInt(a) * BigInt(b), BigInt(1));
+
+  console.log(product);
+}
+
+function leastCommonMultiple(arr: number[]) {}
+
+function findCycle(
+  currentNode: string,
+  nodeMap: Record<string, [string, string]>,
+  instructions: "R" | "L"[]
+) {
+  let i = 0;
+  const seen = [] as string[];
+  const target = currentNode;
+  let currentNodes = [currentNode];
+  const pos: number[] = [];
+
+  while (!checkEndNodes(currentNodes)) {
+    const currentInstruction = instructions[i % instructions.length] as
+      | "L"
+      | "R";
+    const [newCurrentNode] = newCurrentNodes(
+      nodeMap,
+      currentNodes,
+      currentInstruction
+    );
+    currentNodes = [newCurrentNode];
+    seen.push(newCurrentNode);
+    if (newCurrentNode.endsWith("Z")) {
+      pos.push(i);
+    }
+    if (currentInstruction !== instructions[0] && newCurrentNode === target) {
+      console.log("Found cycle", i, currentNodes[0], currentInstruction);
+      break;
+    }
+    i++;
+
+    // if (i % 300 === 0) break;
+    if (i % 1_000_000 === 0) console.log(i);
+    if (i > 1_000_000_000) throw new Error("Too many iterations");
+  }
+
+  return { seen, pos };
+}
+mainCycles();
+// main2();
 
 function parseFile(input: string) {
   const lines = input.trim().split("\n");
@@ -123,14 +193,6 @@ function parseLine(line: string) {
   return match.slice(1);
 }
 
-// class Node {
-//   constructor(public name: string, public left?: Node, public right?: Node) {}
-// }
-
-// function createNode(name: string, left?: Node, right?: Node) {
-//   return new Node(name, left, right);
-// }
-
 function buildTree(nodes: string[][]) {
   const nodeMap: Record<string, [string, string]> = {};
 
@@ -140,8 +202,6 @@ function buildTree(nodes: string[][]) {
 
   return nodeMap;
 }
-
-main2();
 
 //
 // Tests
