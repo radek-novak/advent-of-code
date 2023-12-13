@@ -205,6 +205,53 @@ class Adjacency {
     );
   }
 
+  countLineInner(lineN: number) {
+    const flips = new Set(["S", "F", "L", "J", "7", "|"]);
+
+    let inner = false;
+    let count = 0;
+
+    for (let i = 0; i < this.w; i++) {
+      const char = this.graph[lineN][i];
+      const isGraphBorder = this.distances[lineN][i] !== Infinity;
+
+      console.log(
+        "y",
+        lineN,
+        "x",
+        i,
+        char,
+        Number(isGraphBorder),
+        "count:",
+        count
+      );
+      if (isGraphBorder && char === "-") continue;
+
+      if (isGraphBorder && flips.has(char)) {
+        // flip inner somehow
+
+        continue;
+      }
+
+      if (inner) {
+        console.log("added", "y", lineN, "x", i, char);
+        count++;
+      }
+    }
+
+    return count;
+  }
+
+  countLines() {
+    let count = 0;
+
+    for (let i = 0; i < this.h; i++) {
+      count += this.countLineInner(i);
+    }
+
+    return count;
+  }
+
   printBorder() {
     for (let i = 0; i < this.h; i++) {
       const line = this.graph[i];
@@ -234,15 +281,17 @@ class Adjacency {
 async function main() {
   const file = await Deno.readTextFile("input.txt");
 
-  const parsed = parseFile(file);
-  // const parsed = parseFile(example4);
+  // const parsed = parseFile(file);
+  const parsed = parseFile(example);
 
   const adj = parsed.adjacency;
 
   adj.walk();
 
   adj.printBorder();
+  const inner = adj.countLines();
 
+  console.log(inner);
   console.log(adj.getMaxDistance());
 }
 
