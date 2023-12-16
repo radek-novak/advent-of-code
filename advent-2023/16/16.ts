@@ -5,16 +5,49 @@ import {
 } from "https://deno.land/std@0.208.0/assert/mod.ts";
 
 async function main() {
-  // const file = await Deno.readTextFile("input.txt");
-  const file = await Deno.readTextFile("example.txt");
+  const file = await Deno.readTextFile("input.txt");
+  // const file = await Deno.readTextFile("example.txt");
 
   const parsed = parseFile(file);
 
-  print(parsed);
+  const sum = traceLight(parsed, {
+    pos: [0, 0],
+    dir: [1, 0],
+  });
 
-  const sum = traceLight(parsed);
+  console.log("Part I.:", sum);
 
-  console.log(sum);
+  const rays: Ray[] = [];
+  const rows = parsed.length;
+  const cols = parsed[0].length;
+  for (let rowN = 0; rowN < rows; rowN++) {
+    rays.push({
+      pos: [0, rowN],
+      dir: [1, 0],
+    });
+    rays.push({
+      pos: [cols - 1, rowN],
+      dir: [-1, 0],
+    });
+  }
+  for (let colN = 0; colN < rows; colN++) {
+    rays.push({
+      pos: [colN, 0],
+      dir: [0, 1],
+    });
+    rays.push({
+      pos: [colN, rows - 1],
+      dir: [0, -1],
+    });
+  }
+
+  let max = 0;
+
+  for (const ray of rays) {
+    max = Math.max(max, traceLight(parsed, ray));
+  }
+
+  console.log("Part II.:", max);
 }
 
 function parseFile(input: string) {
@@ -37,24 +70,14 @@ type Ray = {
   pos: [number, number];
 };
 
-function traceLight(input: string[][]) {
-  const rays: Ray[] = [
-    {
-      pos: [0, 0],
-      dir: [1, 0],
-    },
-  ];
+function traceLight(input: string[][], start: Ray) {
+  const rays: Ray[] = [start];
 
   type HistKey = `${number}-${number}:${number}-${number}`;
   const history = new Set<HistKey>();
 
-  let i = 0;
   while (rays.length > 0) {
     const ray = rays[0];
-    // push ray in the dir
-    ray.pos[0] += ray.dir[0];
-    ray.pos[1] += ray.dir[1];
-    // if ray is out of bounds, remove it
     if (
       ray.pos[0] < 0 ||
       ray.pos[0] >= input[0].length ||
@@ -82,8 +105,6 @@ function traceLight(input: string[][]) {
     if (newRay) {
       rays.push(newRay);
     }
-
-    console.log(rays.map((r) => `${r.pos[0]},${r.pos[1]}`));
   }
 
   // postprocess history to only consider positions
@@ -93,7 +114,6 @@ function traceLight(input: string[][]) {
     const [, pos] = hist.split(":");
     positions.add(pos as `${number}-${number}`);
   }
-
   return positions.size;
 }
 
@@ -120,13 +140,13 @@ function rayColl(mirror: Mirror | ".", ray: Ray): Ray | null {
         ray.dir[1] = 0;
       } else if (direction === "R") {
         ray.dir[0] = 0;
-        ray.dir[1] = 1;
+        ray.dir[1] = -1;
       } else if (direction === "D") {
         ray.dir[0] = -1;
         ray.dir[1] = 0;
       } else if (direction === "L") {
         ray.dir[0] = 0;
-        ray.dir[1] = -1;
+        ray.dir[1] = 1;
       }
       break;
     case "\\":
@@ -180,6 +200,23 @@ function print(input: string[][]) {
   for (const line of input) {
     console.log(line.join(""));
   }
+}
+function printWithPositions(input: string[][], positions: Set<string>) {
+  console.log("-".repeat(input[0].length));
+  const field = [] as string[];
+  for (const line of input) {
+    field.push(line.join(""));
+  }
+
+  for (const pos of positions) {
+    const [x, y] = pos.split("-").map(Number);
+    field[y] = field[y].substring(0, x) + "#" + field[y].substring(x + 1);
+  }
+
+  for (const line of field) {
+    console.log(line);
+  }
+  console.log("-".repeat(input[0].length));
 }
 
 main();
