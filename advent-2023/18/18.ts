@@ -25,12 +25,13 @@ async function main() {
 
   const parsed = parseFile(file);
   // const parsed = parseFile(example);
-  console.log(parsed);
 
   const t = new Tunnel(parsed);
 
   t.buildWalls();
-  t.print();
+  // t.print();
+
+  console.log("Part I.:", t.innerSize());
 }
 
 function parseFile(input: string) {
@@ -56,58 +57,62 @@ type TInstr = {
   len: number;
   color: string;
 };
+
+type Point = [number, number];
+type Wall = [Point, Point];
+
 class Tunnel {
   field: string[][];
   cur: [number, number];
+  walls: Wall[] = [];
   instrDirs = {
     R: [1, 0],
     L: [-1, 0],
     U: [0, -1],
     D: [0, 1],
   } as const;
+  start: Point;
 
-  constructor(public instructions: TInstr[], forcedSize?: [number, number]) {
+  constructor(public instructions: TInstr[]) {
     this.cur = [0, 0];
 
-    const { start, size } = this.determineStart();
-    this.field = new Array(forcedSize ? forcedSize[1] : size[1])
-      .fill(0)
-      .map(() => new Array(forcedSize ? forcedSize[0] : size[0]).fill("."));
+    this.planWalls();
+
+    const { start, size } = this.calculateSize();
+    this.start = start;
+    this.field = this.createField(size);
   }
 
-  determineStart() {
-    let l = 0;
-    let r = 0;
-    let u = 0;
-    let d = 0;
-
-    for (let instr of this.instructions) {
-      const { dir, len } = instr;
-
-      switch (dir) {
-        case "U":
-          u += len;
-          break;
-        case "D":
-          d += len;
-          break;
-        case "L":
-          l += len;
-          break;
-        case "R":
-          r += len;
-          break;
-      }
+  calculateSize() {
+    if (this.walls.length === 0) {
+      throw new Error("run planWalls first");
     }
-    const start = [l + r + 1, u + d + 1];
+
+    const xVals = this.walls.map(([[x1], [x2]]) => [x1, x2]).flat();
+    const yVals = this.walls.map(([[, y1], [, y2]]) => [y1, y2]).flat();
+
+    const minX = Math.min(...xVals) - 1;
+    const maxX = Math.max(...xVals) + 1;
+    const minY = Math.min(...yVals) - 1;
+    const maxY = Math.max(...yVals) + 1;
+
+    const size = [maxX - minX + 1, maxY - minY + 1] as [number, number];
 
     return {
-      start,
-      size: [start[0] * 2, start[1] * 2],
+      size,
+      start: [minX, minY] as Point,
     };
   }
 
   addWall(from: [number, number], to: [number, number]) {
+    this.walls.push([from, to]);
+  }
+
+  createField(size: [number, number]) {
+    return new Array(size[1]).fill(0).map(() => new Array(size[0]).fill("."));
+  }
+
+  buildWall(from: [number, number], to: [number, number]) {
     const [x1, y1] = from;
     const [x2, y2] = to;
 
@@ -136,40 +141,83 @@ class Tunnel {
     this.cur = [x2, y2];
   }
 
-  buildWalls() {
+  planWalls() {
     this.instructions.forEach((instr) => this.addInstruction(instr));
+  }
+
+  buildWalls() {
+    for (const [from, to] of this.walls) {
+      this.buildWall(subVec(from, this.start), subVec(to, this.start));
+    }
+  }
+
+  bucketOuterCount() {
+    const visited = new Set<string>();
+
+    const queue = [[0, 0]];
+
+    while (queue.length) {
+      const [x, y] = queue.shift() as Point;
+
+      const key = `${x},${y}`;
+
+      if (visited.has(key)) continue;
+
+      visited.add(key);
+
+      if (this.field[y][x] === "#") continue;
+
+      const neighbors = [
+        [x + 1, y],
+        [x - 1, y],
+        [x, y + 1],
+        [x, y - 1],
+      ].filter(([x, y]) => {
+        return (
+          x >= 0 &&
+          y >= 0 &&
+          x < this.field[0].length &&
+          y < this.field.length &&
+          this.field[y][x] === "." &&
+          !visited.has(`${x},${y}`)
+        );
+      });
+
+      queue.push(...neighbors);
+    }
+    return visited.size;
+  }
+
+  innerSize() {
+    return this.field[0].length * this.field.length - this.bucketOuterCount();
   }
 
   print() {
     console.log(this.field.map((row) => row.join("")).join("\n"));
   }
 }
-
+function subVec(a: [number, number], b: [number, number]): [number, number] {
+  return [a[0] - b[0], a[1] - b[1]];
+}
 main();
 
 //
 // Tests
 //
-Deno.test("simpl", () => {
-  // assertEquals(  );
-});
-Deno.test("obj", () => {
-  // assertObjectMatch(  );
+Deno.test("addwall", () => {
+  const parsed = parseFile(example);
+  const t = new Tunnel(parsed);
+
+  t.buildWall([1, 2], [4, 2]);
+  t.buildWall([6, 3], [6, 8]);
+  // t.print();
+  assertEquals(t.field[2].join(""), ".####....");
 });
 Deno.test("addwall", () => {
   const parsed = parseFile(example);
-  const t = new Tunnel(parsed, [10, 10]);
+  const t = new Tunnel(parsed);
 
-  t.addWall([1, 2], [4, 2]);
-  t.addWall([6, 3], [6, 8]);
+  t.buildWall([4, 2], [1, 2]);
   // t.print();
-  assertEquals(t.field[2].join(""), ".####.....");
-});
-Deno.test("addwall", () => {
-  const parsed = parseFile(example);
-  const t = new Tunnel(parsed, [10, 10]);
-
-  t.addWall([4, 2], [1, 2]);
-  // t.print();
-  assertEquals(t.field[2].join(""), ".####.....");
+  assertEquals(t.field[2].join(""), ".####....");
 });
