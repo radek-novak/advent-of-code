@@ -70,7 +70,7 @@ class Path {
       nextCoord[1] += dx;
     }
 
-    if (this.inBounds(...nextCoord)) {
+    if (this.inBounds(...nextCoord) && !this.isVisited(...nextCoord)) {
       return new Path(this.points, this.width, [
         ...this.path,
         this.getIdxCoord(...nextCoord),
@@ -93,7 +93,7 @@ class Path {
       nextCoord[1] -= dx;
     }
 
-    if (this.inBounds(...nextCoord)) {
+    if (this.inBounds(...nextCoord) && !this.isVisited(...nextCoord)) {
       return new Path(this.points, this.width, [
         ...this.path,
         this.getIdxCoord(...nextCoord),
@@ -114,7 +114,7 @@ class Path {
     const [dx, dy] = this.getDirection();
     const nextCoord = [x + dx, y + dy] as [number, number];
     // console.log({ x, y, dx, dy, nextCoord });
-    if (this.inBounds(...nextCoord)) {
+    if (this.inBounds(...nextCoord) && !this.isVisited(...nextCoord)) {
       return new Path(this.points, this.width, [
         ...this.path,
         this.getIdxCoord(...nextCoord),
@@ -129,6 +129,10 @@ class Path {
     const [prev, cur] = this.path.slice(-2).map((n) => this.getXY(n));
 
     return subVec(cur, prev) as [number, number];
+  }
+
+  isVisited(x: number, y: number) {
+    return this.path.includes(this.getIdxCoord(x, y));
   }
 
   inBounds(x: number, y: number) {
@@ -207,6 +211,7 @@ class Graph {
 
     while (activePaths.length) {
       const path = activePaths.shift()!;
+      // const path = activePaths.pop()!;
 
       visited.add(path.pathToString());
 
@@ -229,15 +234,49 @@ class Graph {
         break;
       }
     }
+    // console.log(
+    //   [...visited].map((v) =>
+    //     v
+    //       .split(",")
+    //       .map(Number)
+    //       .map((n) => [n % this.w, Math.floor(n / this.w)])
+    //   )
+    // );
+    this.printVisited(visited);
+    // console.log(
+    //   ">>>",
+    //   [...visited].reduce(
+    //     (max, cur) => (cur.length > max.length ? cur : max),
+    //     ""
+    //   )
+    // );
+    // console.log(">>", this.shortestPathToPoint);
+  }
 
-    console.log(
-      ">>",
-      [...visited].reduce(
-        (max, cur) => (cur.length > max.length ? cur : max),
-        ""
-      )
+  printVisited(visited: Set<string>) {
+    const visitedArray = [...visited].map((v) =>
+      v
+        .split(",")
+        .map(Number)
+        .map((n) => [n % this.w, Math.floor(n / this.w)])
     );
-    console.log(">>", this.shortestPathToPoint);
+
+    for (const path of visitedArray) {
+      const nested = this.nested.map((row) => row.slice().map(() => "."));
+
+      path.forEach(([x, y]) => {
+        nested[y][x] =
+          Number(nested[y][x]) < 0 ? String(Number(nested[y][x]) + 1) : "1";
+      });
+
+      console.log(nested.map((row) => row.join("")).join("\n"));
+
+      console.log("-".repeat(15));
+    }
+  }
+
+  getXY(n: number) {
+    return [n % this.w, Math.floor(n / this.w)] as [number, number];
   }
 
   print() {
@@ -339,15 +378,13 @@ Deno.test("Path: end", () => {
     0,
     1,
     2,
+    parsedArr.length - 3,
     parsedArr.length - 2,
   ]);
 
   assertEquals(p1.isDone(), true);
   assertEquals(p2.isDone(), false);
+  const paths = p2.getNextValidPaths();
+  assertEquals(paths[0].isDone() || paths[1].isDone(), true);
+  assertEquals(paths[0].isDone() && paths[1].isDone(), false);
 });
-// Deno.test("obj", () => {
-//   // assertObjectMatch(  );
-// });
-// Deno.test("arr", () => {
-//   // assertArrayIncludes
-// });
