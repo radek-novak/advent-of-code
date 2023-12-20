@@ -59,8 +59,8 @@ type Part = {
 async function main() {
   const file = await Deno.readTextFile("input.txt");
 
-  const { ruleSets, parts } = parseFile(file);
-  // const { ruleSets, parts } = parseFile(example);
+  // const { ruleSets, parts } = parseFile(file);
+  const { ruleSets, parts } = parseFile(example);
 
   // console.log(ruleSets, parts);
 
@@ -78,6 +78,13 @@ async function main() {
   );
 
   console.log("Part I.:", acceptedPartsSum);
+
+  const ranges = ruleRanges(ruleSets);
+
+  const combos = Object.values(ranges)
+    .map(([min, max]) => max - min)
+    .reduce((acc, val) => acc * BigInt(val), BigInt(1));
+  console.log(combos);
 }
 
 function parseFile(input: string) {
@@ -215,6 +222,43 @@ function evaluateRule(rule: Rule, part: Part) {
 
 function partValue(part: Part) {
   return part.x + part.m + part.a + part.s;
+}
+
+function ruleRanges(ruleSetMap: Map<string, RuleSet>) {
+  const minX = Infinity;
+  const maxX = -Infinity;
+  const minM = Infinity;
+  const maxM = -Infinity;
+  const minA = Infinity;
+  const maxA = -Infinity;
+  const minS = Infinity;
+  const maxS = -Infinity;
+
+  const ranges: Record<Category, [number, number]> = {
+    x: [minX, maxX],
+    m: [minM, maxM],
+    a: [minA, maxA],
+    s: [minS, maxS],
+  };
+
+  const rules = [...ruleSetMap.values()].map((rs) => rs.rules).flat();
+  for (const ruleSet of rules) {
+    if (ruleSet.comp === "<") {
+      ranges[ruleSet.category][0] = Math.min(
+        ranges[ruleSet.category][0],
+        ruleSet.value
+      );
+    } else if (ruleSet.comp === ">") {
+      ranges[ruleSet.category][1] = Math.max(
+        ranges[ruleSet.category][1],
+        ruleSet.value
+      );
+    } else {
+      throw new Error("Bad comp: " + ruleSet.comp);
+    }
+  }
+
+  return ranges;
 }
 
 main();

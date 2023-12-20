@@ -3,6 +3,7 @@ import {
   assertObjectMatch,
   assertEquals,
 } from "https://deno.land/std@0.208.0/assert/mod.ts";
+import { MinHeap } from "./MinHeap.ts";
 
 const example = `
 2413432311323
@@ -19,27 +20,16 @@ const example = `
 2546548887735
 4322674655533`;
 
-type TPath = {
-  points: number[]; // indices of points
-  cost: number;
-  distanceFromEnd: number;
-  running: number; // 0..3
-};
-
-// type Directions = "U" | "D" | "L" | "R";
-// const directionVectors = {
-//   U: [0, -1],
-//   D: [0, 1],
-//   L: [-1, 0],
-//   R: [1, 0],
-// } as const;
-
 class Path {
   path: number[];
-  width: number;
+  // width: number;
 
-  constructor(readonly points: number[], width: number, path: number[]) {
-    this.points = points;
+  constructor(
+    readonly points: number[],
+    readonly width: number,
+    path: number[]
+  ) {
+    // this.points = points;
     this.width = width;
     this.path = path;
   }
@@ -178,6 +168,13 @@ class Path {
     return this.path.slice(1).reduce((acc, cur) => acc + this.points[cur], 0);
   }
 
+  calculateDistanceFromEnd() {
+    const current = this.getXY(this.getCurrent());
+    const end = this.getXY(this.points.length - 1);
+
+    return Math.abs(current[0] - end[0]) + Math.abs(current[1] - end[1]);
+  }
+
   pathToString() {
     return this.path.join(",");
   }
@@ -186,7 +183,9 @@ class Path {
     return new Path(points, width, s.split(",").map(Number));
   }
 
-  calculateMinDistanceFromEnd() {}
+  valueOf() {
+    return this.calculateDistanceFromEnd() * 5 + this.calculateCost();
+  }
 }
 
 class Graph {
@@ -206,51 +205,77 @@ class Graph {
   }
 
   walk() {
-    const activePaths: Path[] = [new Path(this.array, this.w, [0])];
-    const visited = new Set<string>([activePaths[0].pathToString()]);
+    const activePaths = new MinHeap<Path>([new Path(this.array, this.w, [0])]);
+    // const activePaths: Path[] = [new Path(this.array, this.w, [0])];
+    // const visited = new Set<string>();
 
-    while (activePaths.length) {
-      const path = activePaths.shift()!;
+    const finished: Path[] = [];
+    let lowest = Infinity;
+    let checked = 0;
+
+    while (!activePaths.isEmpty()) {
+      const path = activePaths.remove()!;
+      checked++;
       // const path = activePaths.pop()!;
 
-      visited.add(path.pathToString());
+      // visited.add(path.pathToString());
 
       if (path.isDone()) {
         this.shortestPathToPoint.set(path.calculateCost(), path);
-        console.log(path.pathToString(), path.calculateCost());
+        // console.log(path.pathToString(), path.calculateCost());
+        finished.push(path);
+        lowest = Math.min(lowest, path.calculateCost());
+        console.log("finished:", finished.length, "lowest:", lowest);
         continue;
       }
 
-      const nextValidPaths = path
-        .getNextValidPaths()
-        .filter((path) => !visited.has(path.pathToString()));
+      const nextValidPaths = path.getNextValidPaths().filter(
+        (path) =>
+          // !visited.has(path.pathToString()) &&
+          path.calculateCost() + path.calculateDistanceFromEnd() - 1 <= lowest
+      );
 
       // console.log(nextValidPaths.map((p) => p.path));
-      activePaths.push(...nextValidPaths);
+      // activePaths.insert(...nextValidPaths);
+      for (const p of nextValidPaths) {
+        activePaths.add(p);
+      }
 
       // console.log(activePaths.length);
+      if (activePaths.size() % 100000 === 0) {
+        console.log(
+          "heap size: ",
+          activePaths.size(),
+          "lowest:",
+          lowest,
+          "checked:",
+          checked
+        );
+      }
 
-      if (activePaths.length > 100_000) {
+      if (checked > 2_500_000) {
+        console.log(
+          "stopped after: ",
+          checked,
+          "still in heap: ",
+          activePaths.size()
+        );
         break;
       }
     }
-    // console.log(
-    //   [...visited].map((v) =>
-    //     v
-    //       .split(",")
-    //       .map(Number)
-    //       .map((n) => [n % this.w, Math.floor(n / this.w)])
+
+    console.log("lowest:", lowest, "checked:", checked);
+    // this.printVisited(
+    //   new Set(finished.map((p) => p.pathToString()).slice(0, 10))
+    // );
+    // this.printVisited(
+    //   new Set(
+    //     activePaths
+    //       .getHeap()
+    //       .map((p) => p.pathToString())
+    //       .slice(0, 10)
     //   )
     // );
-    this.printVisited(visited);
-    // console.log(
-    //   ">>>",
-    //   [...visited].reduce(
-    //     (max, cur) => (cur.length > max.length ? cur : max),
-    //     ""
-    //   )
-    // );
-    // console.log(">>", this.shortestPathToPoint);
   }
 
   printVisited(visited: Set<string>) {
@@ -287,8 +312,8 @@ class Graph {
 async function main() {
   const file = await Deno.readTextFile("input.txt");
 
-  // const parsed = parseFile(file);
-  const parsed = parseFile(example);
+  const parsed = parseFile(file);
+  // const parsed = parseFile(example);
 
   const g = new Graph(parsed);
 
@@ -309,6 +334,109 @@ function subVec(a: [number, number], b: [number, number]): [number, number] {
 function eqVec(a: [number, number], b: [number, number]): boolean {
   return a[0] === b[0] && a[1] === b[1];
 }
+
+// class MinHeap {
+//   constructor(public items: Path[] = []) {}
+
+//   insert(item: Path) {
+//     this.items.push(item);
+//     this.bubbleUp(this.items.length - 1);
+//   }
+
+//   bubbleUp(index: number) {
+//     while (index > 0) {
+//       const parent = Math.floor((index + 1) / 2) - 1;
+
+//       if (
+//         // !this.items[parent] ||
+//         // !this.items[index] ||
+//         this.items[parent].calculateCost() -
+//           this.items[parent].calculateDistanceFromEnd() * 5 <
+//         this.items[index].calculateCost() -
+//           this.items[index].calculateDistanceFromEnd() * 5
+//       ) {
+//         break;
+//       }
+
+//       const temp = this.items[parent];
+//       this.items[parent] = this.items[index];
+//       this.items[index] = temp;
+
+//       index = parent;
+//     }
+//   }
+
+//   //Remove from max (first one), Time O(h), Space O(1)
+//   remove() {
+//     if (this.items.length == 0) {
+//       console.log("heap is empty");
+//       return null;
+//     }
+//     if (this.items.length == 1) return this.items.pop();
+
+//     const max = this.items[0];
+//     this.items[0] = this.items.pop()!; //put last to first
+//     this.heapDown(0);
+
+//     return max;
+//   }
+
+//   //Time O(h), Space O(1)
+//   heapDown(pos: number) {
+//     const item = this.items[pos];
+//     let index;
+//     while (pos < Math.floor(this.items.length / 2)) {
+//       const left = 2 * pos + 1;
+//       const right = 2 * pos + 2;
+//       if (
+//         right < this.items.length &&
+//         this.items[left].calculateCost() < this.items[right].calculateCost()
+//       )
+//         index = right;
+//       else index = left;
+
+//       if (
+//         item.calculateCost() - item.calculateDistanceFromEnd() * 5 <
+//         this.items[index].calculateCost() -
+//           this.items[index].calculateDistanceFromEnd() * 5
+//       )
+//         break;
+//       this.items[pos] = this.items[index];
+//       pos = index;
+//     }
+//     this.items[pos] = item;
+//   }
+
+//   // enqueue(...items: Path[]) {
+//   //   this.items.push(...items);
+
+//   //   if (this.items.length % 20 === 0) {
+//   //     this.items.sort((a, b) => {
+//   //       const dist =
+//   //         a.calculateDistanceFromEnd() - b.calculateDistanceFromEnd();
+
+//   //       const cost = a.calculateCost() - b.calculateCost();
+
+//   //       return dist * 5 + cost;
+//   //     });
+//   //   }
+//   // }
+
+//   // dequeue() {
+//   //   return this.items.shift();
+//   // }
+
+//   isEmpty() {
+//     return this.items.length === 0;
+//   }
+
+//   cleanBelow(costLimit: number) {
+//     this.items = this.items.filter(
+//       // (p) => p.calculateCost() <= costLimit
+//       (p) => p.calculateCost() + p.calculateDistanceFromEnd() - 1 <= costLimit
+//     );
+//   }
+// }
 
 main();
 
@@ -387,4 +515,8 @@ Deno.test("Path: end", () => {
   const paths = p2.getNextValidPaths();
   assertEquals(paths[0].isDone() || paths[1].isDone(), true);
   assertEquals(paths[0].isDone() && paths[1].isDone(), false);
+});
+Deno.test("Path: valueOf", () => {
+  assertEquals(new Path([9, 8, 7, 4], 2, [0, 1]).valueOf(), 13);
+  assertEquals(`${Number(new Path([9, 8, 7, 4], 2, [0, 1])) + 1}`, "14");
 });
