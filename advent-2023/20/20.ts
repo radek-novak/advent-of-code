@@ -102,7 +102,7 @@ function buildCircuit(instructions: Instruction[]) {
 }
 
 function processButtonPress(circuit: TCircuit) {
-  const signals: TSignal = circuit.broadcast.output.map((target) => ({
+  const signals: TSignal[] = circuit.broadcast.output.map((target) => ({
     pulse: 0,
     target,
   }));
