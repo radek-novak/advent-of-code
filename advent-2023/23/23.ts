@@ -42,9 +42,9 @@ class Segment {
     const input = this.field;
     const [x, y] = point;
 
-    if (DIODES.includes(input[y][x])) {
-      return [this.forceDiodeDirection([x, y], input[y][x])];
-    }
+    // if (DIODES.includes(input[y][x])) {
+    //   return [this.forceDiodeDirection([x, y], input[y][x])];
+    // }
 
     const neighbors = [
       [x - 1, y],
@@ -60,15 +60,15 @@ class Segment {
       if (this.points.some((p) => p[0] === x && p[1] === y)) {
         return false;
       }
-      if (DIODES.includes(input[y][x])) {
-        return this.checkDiode(point, [x, y]);
-      }
+      // if (DIODES.includes(input[y][x])) {
+      //   return this.checkDiode(point, [x, y]);
+      // }
 
       return true;
     });
   }
 
-  checkDiode(prev: Point, current: Point): boolean {
+  private checkDiode(prev: Point, current: Point): boolean {
     const [px, py] = prev;
     const [cx, cy] = current;
     const diode = this.field[cy][cx];
@@ -239,7 +239,7 @@ async function main() {
 
   const paths: SegmentRange[][] = [[segments[0]]];
   const finalizedPaths: SegmentRange[][] = [];
-  // console.log(segments);
+  console.log(segments);
   while (paths.length) {
     const path = paths.shift()!;
     const end = path.at(-1)!.end;
