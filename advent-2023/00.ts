@@ -4,6 +4,23 @@ import {
   assertEquals,
 } from "https://deno.land/std@0.208.0/assert/mod.ts";
 
+//
+// Solution
+//
+
+//
+// Tests
+//
+Deno.test("simple", () => {
+  // assertEquals(  );
+});
+Deno.test("object", () => {
+  // assertObjectMatch(  );
+});
+Deno.test("array", () => {
+  // assertArrayIncludes
+});
+
 const example = `
 `;
 
@@ -21,16 +38,3 @@ function parseFile(input: string) {
 }
 
 main();
-
-//
-// Tests
-//
-Deno.test("simpl", () => {
-  // assertEquals(  );
-});
-Deno.test("obj", () => {
-  // assertObjectMatch(  );
-});
-Deno.test("arr", () => {
-  // assertArrayIncludes
-});
