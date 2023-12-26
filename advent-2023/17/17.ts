@@ -138,7 +138,6 @@ class Path {
     return [n % this.width, Math.floor(n / this.width)] as [number, number];
   }
 
-  // how many steps were last made in this direction
   checkCapacity() {
     const maxInOneDirection = 3;
 
@@ -184,7 +183,27 @@ class Path {
   }
 
   valueOf() {
-    return this.calculateDistanceFromEnd() * 5 + this.calculateCost();
+    return this.calculateDistanceFromEnd() * 5.4 + this.calculateCost();
+  }
+
+  repr() {
+    // return this.path.slice(-4).join("-").toString();
+    const p = this.path;
+    return `${p[p.length - 1] || 0},${p[p.length - 2] || 0},${
+      p[p.length - 3] || 0
+    },${p[p.length - 4] || 0}`;
+    // if (this.points.length < 5) return null;
+    // const step = 1_000_000;
+
+    // let repr = 0;
+    // for (let i = 1; i < 5; i++) {
+    //   const n = this.points.at(-i);
+    //   if (n) {
+    //     repr += n * step ** i;
+    //   }
+    // }
+
+    // return repr;
   }
 }
 
@@ -192,7 +211,7 @@ class Graph {
   array: number[];
   w: number;
   h: number;
-  shortestPathToPoint = new Map<number, Path>();
+  // shortestPathToPoint = new Map<number, Path>();
 
   constructor(private readonly nested: number[][]) {
     this.array = nested.flat();
@@ -207,75 +226,59 @@ class Graph {
   walk() {
     const activePaths = new MinHeap<Path>([new Path(this.array, this.w, [0])]);
     // const activePaths: Path[] = [new Path(this.array, this.w, [0])];
-    // const visited = new Set<string>();
+    const visitedVal = new Map<string, number>();
 
     const finished: Path[] = [];
     let lowest = Infinity;
     let checked = 0;
-
+    console.time("checked");
     while (!activePaths.isEmpty()) {
-      const path = activePaths.remove()!;
+      if (checked % 100000 === 0) {
+        console.timeEnd("checked");
+        console.time("checked");
+        console.log("lowest:", lowest, "checked:", checked);
+      }
       checked++;
+
+      const path = activePaths.remove()!;
+      const cost = path.calculateCost();
+
       // const path = activePaths.pop()!;
 
-      // visited.add(path.pathToString());
-
       if (path.isDone()) {
-        this.shortestPathToPoint.set(path.calculateCost(), path);
-        // console.log(path.pathToString(), path.calculateCost());
-        finished.push(path);
-        lowest = Math.min(lowest, path.calculateCost());
-        console.log("finished:", finished.length, "lowest:", lowest);
+        if (cost < lowest) {
+          lowest = cost;
+          finished.push(path);
+          console.log("finished:", finished.length, "lowest:", lowest);
+        }
+
         continue;
       }
+      const repr = path.repr();
+      if (visitedVal.has(repr)) {
+        const prevMax = visitedVal.get(repr)!;
+        if (prevMax > cost) {
+          visitedVal.set(repr, cost);
+        } else {
+          continue;
+        }
+      } else {
+        visitedVal.set(repr, cost);
+      }
 
-      const nextValidPaths = path.getNextValidPaths().filter(
-        (path) =>
-          // !visited.has(path.pathToString()) &&
-          path.calculateCost() + path.calculateDistanceFromEnd() - 1 <= lowest
-      );
+      const nextValidPaths = path
+        .getNextValidPaths()
+        .filter(
+          (path) =>
+            path.calculateCost() + path.calculateDistanceFromEnd() - 1 <= lowest
+        );
 
-      // console.log(nextValidPaths.map((p) => p.path));
-      // activePaths.insert(...nextValidPaths);
       for (const p of nextValidPaths) {
         activePaths.add(p);
-      }
-
-      // console.log(activePaths.length);
-      if (activePaths.size() % 100000 === 0) {
-        console.log(
-          "heap size: ",
-          activePaths.size(),
-          "lowest:",
-          lowest,
-          "checked:",
-          checked
-        );
-      }
-
-      if (checked > 2_500_000) {
-        console.log(
-          "stopped after: ",
-          checked,
-          "still in heap: ",
-          activePaths.size()
-        );
-        break;
       }
     }
 
     console.log("lowest:", lowest, "checked:", checked);
-    // this.printVisited(
-    //   new Set(finished.map((p) => p.pathToString()).slice(0, 10))
-    // );
-    // this.printVisited(
-    //   new Set(
-    //     activePaths
-    //       .getHeap()
-    //       .map((p) => p.pathToString())
-    //       .slice(0, 10)
-    //   )
-    // );
   }
 
   printVisited(visited: Set<string>) {
@@ -314,9 +317,8 @@ async function main() {
 
   const parsed = parseFile(file);
   // const parsed = parseFile(example);
-
+  // console.log(parsed.flat().reduce((a, b) => a + b) / parsed.flat().length);
   const g = new Graph(parsed);
-
   g.walk();
 }
 
@@ -334,109 +336,6 @@ function subVec(a: [number, number], b: [number, number]): [number, number] {
 function eqVec(a: [number, number], b: [number, number]): boolean {
   return a[0] === b[0] && a[1] === b[1];
 }
-
-// class MinHeap {
-//   constructor(public items: Path[] = []) {}
-
-//   insert(item: Path) {
-//     this.items.push(item);
-//     this.bubbleUp(this.items.length - 1);
-//   }
-
-//   bubbleUp(index: number) {
-//     while (index > 0) {
-//       const parent = Math.floor((index + 1) / 2) - 1;
-
-//       if (
-//         // !this.items[parent] ||
-//         // !this.items[index] ||
-//         this.items[parent].calculateCost() -
-//           this.items[parent].calculateDistanceFromEnd() * 5 <
-//         this.items[index].calculateCost() -
-//           this.items[index].calculateDistanceFromEnd() * 5
-//       ) {
-//         break;
-//       }
-
-//       const temp = this.items[parent];
-//       this.items[parent] = this.items[index];
-//       this.items[index] = temp;
-
-//       index = parent;
-//     }
-//   }
-
-//   //Remove from max (first one), Time O(h), Space O(1)
-//   remove() {
-//     if (this.items.length == 0) {
-//       console.log("heap is empty");
-//       return null;
-//     }
-//     if (this.items.length == 1) return this.items.pop();
-
-//     const max = this.items[0];
-//     this.items[0] = this.items.pop()!; //put last to first
-//     this.heapDown(0);
-
-//     return max;
-//   }
-
-//   //Time O(h), Space O(1)
-//   heapDown(pos: number) {
-//     const item = this.items[pos];
-//     let index;
-//     while (pos < Math.floor(this.items.length / 2)) {
-//       const left = 2 * pos + 1;
-//       const right = 2 * pos + 2;
-//       if (
-//         right < this.items.length &&
-//         this.items[left].calculateCost() < this.items[right].calculateCost()
-//       )
-//         index = right;
-//       else index = left;
-
-//       if (
-//         item.calculateCost() - item.calculateDistanceFromEnd() * 5 <
-//         this.items[index].calculateCost() -
-//           this.items[index].calculateDistanceFromEnd() * 5
-//       )
-//         break;
-//       this.items[pos] = this.items[index];
-//       pos = index;
-//     }
-//     this.items[pos] = item;
-//   }
-
-//   // enqueue(...items: Path[]) {
-//   //   this.items.push(...items);
-
-//   //   if (this.items.length % 20 === 0) {
-//   //     this.items.sort((a, b) => {
-//   //       const dist =
-//   //         a.calculateDistanceFromEnd() - b.calculateDistanceFromEnd();
-
-//   //       const cost = a.calculateCost() - b.calculateCost();
-
-//   //       return dist * 5 + cost;
-//   //     });
-//   //   }
-//   // }
-
-//   // dequeue() {
-//   //   return this.items.shift();
-//   // }
-
-//   isEmpty() {
-//     return this.items.length === 0;
-//   }
-
-//   cleanBelow(costLimit: number) {
-//     this.items = this.items.filter(
-//       // (p) => p.calculateCost() <= costLimit
-//       (p) => p.calculateCost() + p.calculateDistanceFromEnd() - 1 <= costLimit
-//     );
-//   }
-// }
 
 main();
 

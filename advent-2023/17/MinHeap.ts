@@ -69,6 +69,10 @@ export class MinHeap<T extends { valueOf: () => number }> {
   public add(item: T): void {
     this.heap.push(item);
     this.heapifyUp();
+
+    if (this.heap.length > 500000) {
+      this.heap = this.heap.slice(0, 400000);
+    }
   }
 
   public remove(): T | undefined {
