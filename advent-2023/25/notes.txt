@@ -1,0 +1,3 @@
+I "solved" this by generating graph with grapviz, visually identified the 3 connections and then run breadth-first search to find all nodes in one half. 
+
+dot -Tsvg graph.dot > graph.svg
