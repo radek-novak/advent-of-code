@@ -5,7 +5,7 @@ type TSignal = {
 };
 
 export abstract class MachineModule {
-  nextPulses: TSignal[] = [];
+  nextPulses: { pulse: TPulse; target: string; sender: string }[] = [];
   nextState: unknown;
   state: unknown;
 
@@ -19,16 +19,18 @@ export abstract class MachineModule {
   /**
    * accept pulse, update state and prepare nextPulses
    */
-  acceptPulse = (pulse: TPulse) => {
+  acceptPulse = (pulse: TPulse, sender: string) => {
     for (const output of this.outputs) {
-      this.nextPulses.push({ pulse, target: output });
+      this.nextPulses.push({ pulse, target: output, sender });
     }
-    // this.state = this.nextState;
   };
 
   public send() {
     for (const nextPulse of this.nextPulses) {
-      this.moduleMap[nextPulse.target].acceptPulse(nextPulse.pulse);
+      this.moduleMap[nextPulse.target].acceptPulse(
+        nextPulse.pulse,
+        nextPulse.sender
+      );
       this.emit(nextPulse.target, nextPulse.pulse);
     }
     this.nextPulses = [];
@@ -53,15 +55,20 @@ export class FlipFlop extends MachineModule {
     public moduleMap: Record<string, MachineModule>
   ) {
     super(name, outputs, emit, moduleMap);
+
+    this.nextState = this.state;
   }
 
   acceptPulse = (pulse: TPulse) => {
-    this.nextState = this.state === 0 ? 1 : 0;
-
     if (pulse === 0) {
+      this.nextState = this.state === 0 ? 1 : 0;
       const pulseToSend = this.state === 0 ? 1 : 0;
       for (const output of this.outputs) {
-        this.nextPulses.push({ pulse: pulseToSend, target: output });
+        this.nextPulses.push({
+          pulse: pulseToSend,
+          target: output,
+          sender: this.name,
+        });
       }
     }
 
@@ -81,21 +88,27 @@ export class Conjunction extends MachineModule {
     public state: Record<string, 0 | 1>
   ) {
     super(name, outputs, emit, moduleMap);
+
+    this.nextState = this.state;
   }
 
-  acceptPulse = (pulse: TPulse) => {
-    this.nextState = { ...this.state, [name]: pulse };
-    const allHigh = Object.values(this.nextState as any).every(
+  acceptPulse = (pulse: TPulse, sender: string) => {
+    this.state[sender] = pulse;
+    this.nextState = this.state;
+
+    const allHigh = Object.values(this.state as any).every(
       (pulse) => pulse === 1
     );
 
+    this.nextPulses = [];
+
     for (const output of this.outputs) {
       this.nextPulses.push({
-        pulse: allHigh ? 1 : 0,
+        pulse: allHigh ? 0 : 1,
         target: output,
+        sender: this.name,
       });
     }
-    // this.state = this.nextState as any;
   };
 }
 
@@ -120,6 +133,8 @@ export class Counter {
   }
 
   getPrintableFinalCounts() {
-    return `high: ${this.highCount}, low: ${this.lowCount}`;
+    return `high: ${this.highCount}, low: ${this.lowCount}, mult: ${
+      this.highCount * this.lowCount
+    }`;
   }
 }

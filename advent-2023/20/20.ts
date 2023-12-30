@@ -29,18 +29,49 @@ broadcaster -> a
 %b -> con
 &con -> output`;
 
-async function main() {
-  // const file = await Deno.readTextFile("input.txt");
+async function main(tries: number = 1) {
+  const file = await Deno.readTextFile("input.txt");
 
-  // const parsed = parseFile(file);
-  const parsed = parseFile(example);
+  const parsed = parseFile(file);
+  // const parsed = parseFile(example2);
 
   const { circuit, counter } = buildCircuit(parsed);
 
-  printCircuit(circuit);
+  const circuitEntries = Object.entries(circuit);
 
-  for (let i = 0; i < 1; i++) {
-    circuit.broadcast.acceptPulse(0);
+  circuitEntries.sort((a, b) => {
+    if (a[0] === "broadcast") return -1;
+    if (b[0] === "broadcast") return 1;
+    if (a[1] instanceof FlipFlop && b[1] instanceof Conjunction) return -1;
+    if (a[1] instanceof Conjunction && b[1] instanceof FlipFlop) return 1;
+    if (a[1] instanceof FlipFlop && b[1] instanceof Output) return -1;
+    if (a[1] instanceof Output && b[1] instanceof FlipFlop) return 1;
+    if (a[1] instanceof Conjunction && b[1] instanceof Output) return -1;
+    if (a[1] instanceof Output && b[1] instanceof Conjunction) return 1;
+
+    if (a[1] instanceof Conjunction && b[1] instanceof Conjunction) {
+      const byInput =
+        Object.keys(a[1].state).length - Object.keys(b[1].state).length;
+
+      if (byInput === 0) {
+        return a[1].outputs.length - b[1].outputs.length;
+      }
+
+      return byInput;
+    }
+    if (a[1] instanceof FlipFlop && b[1] instanceof FlipFlop) {
+      return a[1].outputs.length - b[1].outputs.length;
+    }
+
+    return 0;
+  });
+  // console.log(circuitEntries.map((ce) => ce[0]).join(", "));
+  // printCircuit(circuit);
+
+  for (let i = 0; i < tries; i++) {
+    // printCircuit(circuit);
+    counter.emit("button")("broadcast", 0);
+    circuit.broadcast.acceptPulse(0, "button");
     circuit.broadcast.send();
 
     let lastSum = -1; // anything else than 0
@@ -48,21 +79,40 @@ async function main() {
       lastSum = counter.getCounts();
 
       // console.log(">> last", lastSum);
-      printCircuit(circuit);
+      // printCircuit(circuit);
 
-      for (const moduleName of Object.keys(circuit)) {
+      for (const moduleName of circuitEntries.map((ce) => ce[0])) {
         if (moduleName === "broadcast") continue;
         // console.log("updating", moduleName, !!circuit[moduleName]);
         circuit[moduleName].send();
       }
     }
+
+    // console.log("---");
   }
 
-  printCircuit(circuit);
-  console.log(counter.getPrintableFinalCounts());
+  // console.log("--- final states (" + tries + ") ---");
+  // printCircuit(circuit);
+  console.log(
+    tries.toString().padStart(4),
+    ">>",
+    counter.getPrintableFinalCounts()
+  );
+  // low 585923190
 }
 
-main();
+// main();
+// main(2);
+// main(3);
+// main(4);
+// main(5);
+// main(6);
+// main(7);
+// main(8);
+// main(9);
+// main(10);
+// main(100);
+main(1000);
 
 //
 // Solution
@@ -165,11 +215,16 @@ function printCircuit(circuit: TCircuit) {
   for (const moduleName in circuit) {
     if (moduleName === "broadcast") continue;
     const m = circuit[moduleName];
-    lines.push(`${m.name}:  state: ${JSON.stringify((m as any).state)}`);
+    lines.push(
+      `${m.name}:  state: ${JSON.stringify(
+        (m as any).state
+      )} next: ${JSON.stringify((m as any).nextState)}`
+    );
   }
 
   console.log("-".repeat(10));
   console.log(lines.join("\n"));
+  console.log("-".repeat(10));
 }
 
 //
